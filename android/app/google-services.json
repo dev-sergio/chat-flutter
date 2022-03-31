@@ -15,31 +15,22 @@
       },
       "oauth_client": [
         {
-          "client_id": "790391025952-329ks5mg41kuc7h862gug88pl0ast0ch.apps.googleusercontent.com",
+          "client_id": "790391025952-aanmctqjn1k5pv5tavtnaklmpartp5qu.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "br.com.sergiojr.chat",
             "certificate_hash": "66670c7d763869610d1b7045a1551058a0c7ddb4"
           }
-        },
-        {
-          "client_id": "790391025952-9bov2cntg0koog055gguk1j3b4hpov9o.apps.googleusercontent.com",
-          "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyDjkFfifGtfo1FF3NNS7G-jQJOhybdUtMo"
+          "current_key": "AIzaSyBQpXiUIdbGY3CbG9rPJPP1cDHeiGuzwas"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "790391025952-9bov2cntg0koog055gguk1j3b4hpov9o.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }
