@@ -9,6 +9,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 
+import 'chat_message.dart';
+
 class ChatScreen extends StatefulWidget {
   const ChatScreen({Key? key}) : super(key: key);
 
@@ -21,13 +23,25 @@ class _ChatScreenState extends State<ChatScreen> {
   List<Map<dynamic, dynamic>> list = [];
   final GoogleSignIn googleSignIn = GoogleSignIn();
   User? _currentUser;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      setState(() {
+        _currentUser = user;
+      });
+    });
+  }
 
   Future<User?> _getUser() async {
-    if (_currentUser != null) return _currentUser;
+    if (_currentUser?.displayName != null) return _currentUser;
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
-      final GoogleSignInAuthentication? googleAuth = await googleUser?.authentication;
+      final GoogleSignInAuthentication? googleAuth =
+          await googleUser?.authentication;
 
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth?.accessToken,
@@ -38,10 +52,9 @@ class _ChatScreenState extends State<ChatScreen> {
           await FirebaseAuth.instance.signInWithCredential(credential);
 
       final User? user = userCredential.user;
-      print('Usuario: $user');
       return user;
     } catch (error) {
-      print(error);
+      return null;
     }
   }
 
@@ -58,17 +71,19 @@ class _ChatScreenState extends State<ChatScreen> {
     Map<String, dynamic> data = {
       "uid": user?.uid,
       "senderName": user?.displayName,
-      "senderPhoto": user?.photoURL
-
+      "senderPhotoUrl": user?.photoURL,
+      "time": Timestamp.now(),
     };
 
     if (imgFile != null) {
       File file = File(imgFile.path);
       firebase_storage.UploadTask task = firebase_storage
           .FirebaseStorage.instance
-          .ref(DateTime.now().millisecondsSinceEpoch.toString())
+          .ref(_currentUser!.uid + DateTime.now().millisecondsSinceEpoch.toString())
           .putFile(file);
-
+      setState(() {
+        _isLoading = true;
+      });
       try {
         firebase_storage.TaskSnapshot snapshot = await task;
         String url = await (snapshot).ref.getDownloadURL();
@@ -84,6 +99,9 @@ class _ChatScreenState extends State<ChatScreen> {
           }
         }
       }
+      setState(() {
+        _isLoading = false;
+      });
     }
     if (text != null) data['text'] = text;
     FirebaseFirestore.instance.collection("messages").add(data);
@@ -93,47 +111,59 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Olá"),
+        title: Text(_currentUser?.displayName != null
+            ? "Olá, ${_currentUser?.displayName}"
+            : "Chat App"),
+        centerTitle: true,
         elevation: 0,
+        actions: [
+          _currentUser != null
+              ? IconButton(
+                  icon: const Icon(Icons.exit_to_app),
+                  onPressed: () {
+                    FirebaseAuth.instance.signOut();
+                    googleSignIn.signOut();
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text("Você saiu com sucesso!"),
+                      backgroundColor: Colors.red,
+                    ));
+                  },
+                )
+              : Container(),
+        ],
       ),
       body: Column(
         children: [
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream:
-                  FirebaseFirestore.instance.collection('messages').snapshots(),
+              stream: FirebaseFirestore.instance
+                  .collection('messages')
+                  .orderBy("time")
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return const Center(
                     child: CircularProgressIndicator(),
                   );
                 }
-
-                List<DocumentSnapshot> lista =
-                    snapshot.data!.docs.reversed.toList();
+                List<DocumentSnapshot> lista = [];
+                lista = snapshot.data!.docs.reversed.toList();
                 return ListView.builder(
                   itemCount: snapshot.data!.docs.length,
                   reverse: true,
                   itemBuilder: (context, index) {
-                    return ListTile(
-                      title: Text(lista[index]['text']),
-                    );
+                    return ChatMessage(
+                        data: lista[index],
+                        mine: lista[index]["uid"] == _currentUser?.uid);
                   },
                 );
               },
             ),
           ),
+          _isLoading ? const LinearProgressIndicator() : Container(),
           TextComposser(sendMessage: _sendMessage),
         ],
       ),
     );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    FirebaseAuth.instance.authStateChanges().listen((user) {
-      _currentUser = user;
-    });
   }
 }
